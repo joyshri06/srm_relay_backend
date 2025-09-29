@@ -12,7 +12,9 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-this")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # ✅ Allowed hosts (Render domain or custom domain)
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "srmrelay.onrender.com").split(",")
+ALLOWED_HOSTS = [
+    host for host in os.environ.get("ALLOWED_HOSTS", "srm-relay-backend.onrender.com").split(",") if host
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -45,7 +47,9 @@ MIDDLEWARE = [
 
 # ✅ CORS (restrict in production)
 CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
-CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+CORS_ALLOWED_ORIGINS = [
+    origin for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin
+]
 
 ROOT_URLCONF = 'relay_project.urls'
 
