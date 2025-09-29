@@ -11,6 +11,7 @@ class AuthappConfig(AppConfig):
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser(
                 username="admin",
-                email=os.environ.get("ADMIN_EMAIL", "admin@example.com"),
-                password=os.environ.get("ADMIN_PASSWORD", "admin123")
+                email=os.environ.get("Admin_email1", "admin@example.com"),
+                password=os.environ.get("Admin_password", "admin123"),
+                role="FACULTY"  # ✅ required field in your model
             )
