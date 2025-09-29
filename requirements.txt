@@ -6,3 +6,6 @@ gunicorn
 whitenoise
 psycopg2-binary
 dj-database-url
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
