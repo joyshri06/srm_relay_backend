@@ -2,10 +2,20 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from authapp.views import google_auth  # ✅ Import Google login view
 
+
+# Healthcheck view
+def healthcheck(request):
+    return HttpResponse("Backend is running ✅", content_type="text/plain")
+
+
 urlpatterns = [
+    # Healthcheck root
+    path('', healthcheck, name='healthcheck'),
+
     # Django admin
     path('admin/', admin.site.urls),
 
