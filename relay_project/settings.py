@@ -45,15 +45,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ✅ CORS (choose one approach)
-# Allow all origins (for dev/testing)
+# ✅ CORS
 CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
-
-# Or restrict to specific origins (for production)
 CORS_ALLOWED_ORIGINS = [
     origin for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin
 ]
-# Example: set in Render env → CORS_ALLOWED_ORIGINS="https://your-frontend.onrender.com,https://another.com"
 
 ROOT_URLCONF = 'relay_project.urls'
 
@@ -75,13 +71,21 @@ TEMPLATES = [
 WSGI_APPLICATION = 'relay_project.wsgi.application'
 
 # ✅ Database (Postgres on Render, fallback SQLite locally)
-DATABASES = {
-    'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
+if os.environ.get("DATABASE_URL"):  # Render/production
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ["DATABASE_URL"],
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:  # Local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
