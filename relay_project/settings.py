@@ -45,11 +45,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ✅ CORS (restrict in production)
+# ✅ CORS (choose one approach)
+# Allow all origins (for dev/testing)
 CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
+
+# Or restrict to specific origins (for production)
 CORS_ALLOWED_ORIGINS = [
     origin for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin
 ]
+# Example: set in Render env → CORS_ALLOWED_ORIGINS="https://your-frontend.onrender.com,https://another.com"
 
 ROOT_URLCONF = 'relay_project.urls'
 

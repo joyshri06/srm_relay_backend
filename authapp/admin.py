@@ -1,17 +1,19 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import User, Message
-
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    # Fields to display in the list view
+    add_form = UserCreationForm
+    form = UserChangeForm
+    model = User
+
     list_display = ('username', 'email', 'role', 'is_staff', 'is_active')
     list_filter = ('role', 'is_staff', 'is_superuser', 'is_active')
     search_fields = ('username', 'email')
     ordering = ('username',)
 
-    # Fields to show in the add/edit form
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role')}),
@@ -33,7 +35,6 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('username', 'email', 'role', 'password1', 'password2', 'is_staff', 'is_active'),
         }),
     )
-
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
