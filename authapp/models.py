@@ -1,54 +1,40 @@
-from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import User, Message
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+class User(AbstractUser):
+    ROLE_CHOICES = [
+        ('PRINCIPAL', 'Principal'),
+        ('VICE_PRINCIPAL', 'Vice Principal'),
+        ('HOD', 'Head of Department'),
+        ('FACULTY', 'Faculty'),
+    ]
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+    def __str__(self):
+        return f"{self.username} ({self.role})"
 
 
-@admin.register(User)
-class UserAdmin(BaseUserAdmin):
-    add_form = UserCreationForm
-    form = UserChangeForm
-    model = User
-
-    list_display = ('username', 'email', 'role', 'is_staff', 'is_active')
-    list_filter = ('role', 'is_staff', 'is_superuser', 'is_active')
-    search_fields = ('username', 'email')
-    ordering = ('username',)
-
-    fieldsets = (
-        (None, {'fields': ('username', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'role')}),
-        ('Permissions', {
-            'fields': (
-                'is_active',
-                'is_staff',
-                'is_superuser',
-                'groups',
-                'user_permissions',
-            )
-        }),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+class Message(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='auth_messages')
+    text = models.CharField(max_length=255, blank=True)
+    audio_url = models.URLField(blank=True, null=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('approved', 'Approved'),
+            ('pending', 'Pending'),
+            ('rejected', 'Rejected'),
+        ],
+        default='pending'
     )
-
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': (
-                'username',
-                'email',
-                'role',
-                'password1',
-                'password2',
-                'is_staff',
-                'is_active',
-            ),
-        }),
+    target_role = models.CharField(
+        max_length=20,
+        choices=[
+            ('user', 'User'),
+            ('official', 'Official'),
+        ]
     )
+    created_at = models.DateTimeField(auto_now_add=True)
 
-
-@admin.register(Message)
-class MessageAdmin(admin.ModelAdmin):
-    list_display = ('user', 'text', 'audio_url', 'status', 'target_role', 'created_at')
-    list_filter = ('status', 'target_role', 'created_at')
-    search_fields = ('user__username', 'text')
-    ordering = ('-created_at',)
+    def __str__(self):
+        return f"{self.user.username} → {self.target_role} [{self.status}]"
