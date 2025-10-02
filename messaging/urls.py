@@ -36,6 +36,9 @@ urlpatterns = [
     # 📊 Stats and approvals
     path('admin-stats/', AdminStatsView.as_view(), name='admin-stats'),
     path('pending/', pending_messages, name='pending_messages'),
+    path("", MessageListView.as_view(), name="message-list"),
+
+    
 
     # 📂 Core data
     path('contacts/', ContactsView.as_view(), name='contacts'),
