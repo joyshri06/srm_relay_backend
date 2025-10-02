@@ -15,7 +15,7 @@ User = get_user_model()
 def google_auth(request):
     """
     Authenticate a user via Google OAuth2 ID token.
-    If the user does not exist, create them with a default role.
+    If the user does not exist, create them without a role.
     Returns JWT access/refresh tokens and basic user info.
     """
     try:
@@ -48,10 +48,9 @@ def google_auth(request):
             }
         )
 
-        # ✅ Ensure user has a role field (if your custom User model supports it)
-        if hasattr(user, 'role') and not user.role:
-            user.role = 'STAFF'   # default role
-            user.save()
+        # ❌ REMOVE auto-assigning role
+        # If user is new, leave role = None so frontend can show role-selection page
+        # Only update role later via a dedicated endpoint
 
         # ✅ Issue JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -63,12 +62,38 @@ def google_auth(request):
                 'email': user.email,
                 'name': user.first_name,
                 'picture': picture,
-                'role': getattr(user, 'role', None),
+                'role': getattr(user, 'role', None),  # will be None for new users
             }
         })
 
     except ValueError:
         # Token verification failed
         return Response({'error': 'Invalid ID token'}, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_role(request):
+    """
+    Endpoint to set the role for a user after role-selection page.
+    """
+    try:
+        email = request.data.get('email')
+        role = request.data.get('role')
+
+        if not email or not role:
+            return Response({'error': 'Email and role are required'}, status=400)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({'error': 'User not found'}, status=404)
+
+        user.role = role
+        user.save()
+
+        return Response({'message': 'Role updated successfully', 'role': user.role})
+
     except Exception as e:
         return Response({'error': str(e)}, status=500)
