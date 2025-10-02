@@ -1,12 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import User, Message
+from .forms import CustomUserCreationForm, CustomUserChangeForm
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    add_form = UserCreationForm
-    form = UserChangeForm
+    add_form = CustomUserCreationForm
+    form = CustomUserChangeForm
     model = User
 
     list_display = ('username', 'email', 'role', 'is_staff', 'is_active')
