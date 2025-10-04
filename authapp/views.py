@@ -9,6 +9,14 @@ from google.auth.transport import requests as google_requests
 
 User = get_user_model()
 
+def get_tokens_for_user(user):
+    """Helper to issue JWT tokens with role claim included."""
+    refresh = RefreshToken.for_user(user)
+    refresh['role'] = user.role or None   # ✅ embed role into token
+    return {
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+    }
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Public endpoint for Google login
@@ -27,7 +35,7 @@ def google_auth(request):
         idinfo = id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
-            settings.GOOGLE_WEB_CLIENT_ID  # must match Flutter's serverClientId
+            settings.GOOGLE_WEB_CLIENT_ID
         )
 
         email = idinfo.get('email')
@@ -44,30 +52,24 @@ def google_auth(request):
                 'first_name': name or '',
                 'email': email,
                 'is_active': True,
-                'is_staff': True,  # adjust if only certain users should access admin
+                'is_staff': True,
             }
         )
 
-        # ❌ REMOVE auto-assigning role
-        # If user is new, leave role = None so frontend can show role-selection page
-        # Only update role later via a dedicated endpoint
-
-        # ✅ Issue JWT tokens
-        refresh = RefreshToken.for_user(user)
+        # ✅ Issue JWT tokens with role claim
+        tokens = get_tokens_for_user(user)
 
         return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
+            **tokens,
             'user': {
                 'email': user.email,
                 'name': user.first_name,
                 'picture': picture,
-                'role': getattr(user, 'role', None),  # will be None for new users
+                'role': user.role,  # None if not set yet
             }
         })
 
     except ValueError:
-        # Token verification failed
         return Response({'error': 'Invalid ID token'}, status=400)
     except Exception as e:
         return Response({'error': str(e)}, status=500)
@@ -78,6 +80,7 @@ def google_auth(request):
 def set_role(request):
     """
     Endpoint to set the role for a user after role-selection page.
+    Returns updated JWT tokens with role claim.
     """
     try:
         email = request.data.get('email')
@@ -93,7 +96,14 @@ def set_role(request):
         user.role = role
         user.save()
 
-        return Response({'message': 'Role updated successfully', 'role': user.role})
+        # ✅ Issue new tokens with updated role
+        tokens = get_tokens_for_user(user)
+
+        return Response({
+            'message': 'Role updated successfully',
+            'role': user.role,
+            **tokens
+        })
 
     except Exception as e:
         return Response({'error': str(e)}, status=500)

@@ -133,6 +133,7 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'TOKEN_OBTAIN_SERIALIZER': 'authapp.token.CustomTokenObtainPairSerializer',  # ✅ add this
 }
 
 # ✅ Google OAuth client ID (keep in env for security)

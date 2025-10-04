@@ -8,10 +8,16 @@ class User(AbstractUser):
         ('HOD', 'Head of Department'),
         ('FACULTY', 'Faculty'),
     ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        null=True,       # ✅ allow empty
+        blank=True,      # ✅ allow empty
+        default=None     # ✅ default None
+    )
 
     def __str__(self):
-        return f"{self.username} ({self.role})"
+        return f"{self.username} ({self.role or 'No Role'})"
 
 
 class Message(models.Model):
