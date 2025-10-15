@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+import requests as py_requests  # for Firebase token verification
 
 User = get_user_model()
 
@@ -13,7 +14,6 @@ User = get_user_model()
 def get_tokens_for_user(user):
     """Helper to issue JWT tokens with role claim included."""
     refresh = RefreshToken.for_user(user)
-    # Embed role into both refresh and access tokens
     refresh['role'] = user.role or None
     access = refresh.access_token
     access['role'] = user.role or None
@@ -24,19 +24,14 @@ def get_tokens_for_user(user):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Public endpoint for Google login
+@permission_classes([AllowAny])
 def google_auth(request):
-    """
-    Authenticate a user via Google OAuth2 ID token.
-    If the user does not exist, create them without a role.
-    Returns JWT access/refresh tokens and basic user info.
-    """
+    """Authenticate a user via Google OAuth2 ID token."""
     try:
         token = request.data.get('id_token')
         if not token:
             return Response({'error': 'Missing ID token'}, status=400)
 
-        # Verify token with Google and enforce audience (Web Client ID)
         idinfo = id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
@@ -50,19 +45,17 @@ def google_auth(request):
         if not email:
             return Response({'error': 'Email not found in token'}, status=400)
 
-        # Create or get Django user
         user, created = User.objects.get_or_create(
             username=email,
             defaults={
                 'first_name': name or '',
                 'email': email,
                 'is_active': True,
-                'is_staff': False,  # don’t mark everyone as staff
-                'role': None,       # explicitly no role for new users
+                'is_staff': False,
+                'role': None,
             }
         )
 
-        # Issue JWT tokens with role claim
         tokens = get_tokens_for_user(user)
 
         return Response({
@@ -71,7 +64,7 @@ def google_auth(request):
                 'email': user.email,
                 'name': user.first_name,
                 'picture': picture,
-                'role': user.role,  # None if not set yet
+                'role': user.role,
             }
         })
 
@@ -82,12 +75,64 @@ def google_auth(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])  # ✅ Require login
+@permission_classes([AllowAny])
+def firebase_auth(request):
+    """
+    Authenticate a user via Firebase ID token (email/password flow).
+    If the user does not exist, create them without a role.
+    """
+    try:
+        token = request.data.get('id_token')
+        email = request.data.get('email')
+        if not token or not email:
+            return Response({'error': 'ID token and email are required'}, status=400)
+
+        # Verify Firebase ID token with Google
+        verify_url = f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={settings.FIREBASE_API_KEY}"
+        resp = py_requests.post(verify_url, json={"idToken": token})
+        if resp.status_code != 200:
+            return Response({'error': 'Invalid Firebase ID token'}, status=400)
+
+        data = resp.json()
+        users = data.get("users", [])
+        if not users:
+            return Response({'error': 'No user found for this token'}, status=400)
+
+        name = users[0].get("displayName", "")
+        picture = users[0].get("photoUrl", "")
+
+        # Create or get Django user
+        user, created = User.objects.get_or_create(
+            username=email,
+            defaults={
+                'first_name': name or '',
+                'email': email,
+                'is_active': True,
+                'is_staff': False,
+                'role': None,
+            }
+        )
+
+        tokens = get_tokens_for_user(user)
+
+        return Response({
+            **tokens,
+            'user': {
+                'email': user.email,
+                'name': user.first_name,
+                'picture': picture,
+                'role': user.role,
+            }
+        })
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def set_role(request):
-    """
-    Endpoint to set the role for the currently authenticated user
-    after the role-selection page. Returns updated JWT tokens with role claim.
-    """
+    """Set the role for the authenticated user."""
     try:
         role = request.data.get('role')
         if not role:
@@ -97,7 +142,6 @@ def set_role(request):
         user.role = role
         user.save()
 
-        # Issue new tokens with updated role
         tokens = get_tokens_for_user(user)
 
         return Response({

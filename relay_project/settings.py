@@ -133,7 +133,7 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'TOKEN_OBTAIN_SERIALIZER': 'authapp.token.CustomTokenObtainPairSerializer',  # ✅ add this
+    'TOKEN_OBTAIN_SERIALIZER': 'authapp.token.CustomTokenObtainPairSerializer',
 }
 
 # ✅ Google OAuth client ID (keep in env for security)
@@ -141,3 +141,6 @@ GOOGLE_WEB_CLIENT_ID = os.environ.get(
     "GOOGLE_WEB_CLIENT_ID",
     "1035177030131-3vr5fd2luk3fjg3e2eef2gjctbm8o9k8.apps.googleusercontent.com"
 )
+
+# ✅ Firebase Web API Key (needed for /auth/firebase/ endpoint)
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyATNxQwqnJ2Gfp5VMM21nSl6FqvlpmxPzk")
