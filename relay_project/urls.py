@@ -18,6 +18,8 @@ urlpatterns = [
 
     # Django admin
     path('admin/', admin.site.urls),
+    path('api/auth/', include('authapp.urls')),
+
 
     # Messaging app endpoints
     path('api/messages/', include('messaging.urls')),

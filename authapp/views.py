@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
@@ -9,14 +9,19 @@ from google.auth.transport import requests as google_requests
 
 User = get_user_model()
 
+
 def get_tokens_for_user(user):
     """Helper to issue JWT tokens with role claim included."""
     refresh = RefreshToken.for_user(user)
-    refresh['role'] = user.role or None   # ✅ embed role into token
+    # Embed role into both refresh and access tokens
+    refresh['role'] = user.role or None
+    access = refresh.access_token
+    access['role'] = user.role or None
     return {
-        'access': str(refresh.access_token),
+        'access': str(access),
         'refresh': str(refresh),
     }
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Public endpoint for Google login
@@ -31,7 +36,7 @@ def google_auth(request):
         if not token:
             return Response({'error': 'Missing ID token'}, status=400)
 
-        # ✅ Verify token with Google and enforce audience (Web Client ID)
+        # Verify token with Google and enforce audience (Web Client ID)
         idinfo = id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
@@ -45,18 +50,19 @@ def google_auth(request):
         if not email:
             return Response({'error': 'Email not found in token'}, status=400)
 
-        # ✅ Create or get Django user
+        # Create or get Django user
         user, created = User.objects.get_or_create(
             username=email,
             defaults={
                 'first_name': name or '',
                 'email': email,
                 'is_active': True,
-                'is_staff': True,
+                'is_staff': False,  # don’t mark everyone as staff
+                'role': None,       # explicitly no role for new users
             }
         )
 
-        # ✅ Issue JWT tokens with role claim
+        # Issue JWT tokens with role claim
         tokens = get_tokens_for_user(user)
 
         return Response({
@@ -76,27 +82,22 @@ def google_auth(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])  # ✅ Require login
 def set_role(request):
     """
-    Endpoint to set the role for a user after role-selection page.
-    Returns updated JWT tokens with role claim.
+    Endpoint to set the role for the currently authenticated user
+    after the role-selection page. Returns updated JWT tokens with role claim.
     """
     try:
-        email = request.data.get('email')
         role = request.data.get('role')
+        if not role:
+            return Response({'error': 'Role is required'}, status=400)
 
-        if not email or not role:
-            return Response({'error': 'Email and role are required'}, status=400)
-
-        user = User.objects.filter(email=email).first()
-        if not user:
-            return Response({'error': 'User not found'}, status=404)
-
+        user = request.user
         user.role = role
         user.save()
 
-        # ✅ Issue new tokens with updated role
+        # Issue new tokens with updated role
         tokens = get_tokens_for_user(user)
 
         return Response({
